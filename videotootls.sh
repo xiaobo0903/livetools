@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Copyright (C) 2020-2030 YunShiCloud, Inc
+# 该程序是为了难证直播服务在各种异常流情况下的处理效果；
+# written by xiaobo 2020-11-05
+
 echo "##############################################################################"
 echo "#                                                                            #"
 echo "#                        Onair直播服务的流测试工具                           #"
@@ -26,7 +31,7 @@ do
     case $choice in
     #判断变量cho的值
     "1")
-	ffmpeg -re -stream_loop -1 -i $av -vf "settb=AVTB,setpts='trunc(PTS/1K)*1K+st(1,trunc(RTCTIME/1K))-1K*trunc(ld(1)/1K)',drawtext=fontsize=60:fontcolor=white:x=2:y=(h-text_h)/2-100:text='%{localtime}.%{eif\:1M*t-1K*trunc(t*1K)\:d}'"   -f flv $rtmp
+	ffmpeg -re -stream_loop -1 -i $av -vf "settb=AVTB,setpts='trunc(PTS/1K)*1K+st(1,trunc(RTCTIME/1K))-1K*trunc(ld(1)/1K)',drawtext=fontsize=60:fontcolor=white:x=2:y=(h-text_h)/2-100:text='%{localtime}.%{eif\:1M*t-1K*trunc(t*1K)\:d}'" -vcodec libx264 -acodec aac -q 21  -f flv $rtmp
     ;;
     "2")
 	ffmpeg -re -stream_loop -1 -i $av -vn -acodec copy   -f flv $rtmp
@@ -35,10 +40,17 @@ do
 	ffmpeg -re -stream_loop -1 -i $av -vcodec copy -an   -f flv $rtmp
     ;;
     "4")
-	ffmpeg -re -stream_loop -1 -i $av -vcodec copy -acodec aac -filter_complex "adelay=3000|3000" -f flv $rtmp
+	ffmpeg -re -stream_loop -1 -i $av -vcodec copy -acodec aac -filter_complex "adelay=3000|3000" -vcodec libx264 -acodec aac -q 21 -f flv $rtmp
     ;;
     "5")
-        ffmpeg -re -stream_loop -1 -i $av  -filter_complex split[a][b],[b]setpts=PTS+5/TB[c],[c][a]overlay=0:0 -b 2000k -q 23 -f flv $rtmp 
+        read -p "请输入延时的秒数[5]:" mdelay
+        if [ "$mdelay" = "" ]; then
+             mdelay=5
+        fi
+        read -p "延时秒数设置的是:$mdelay秒, 确认开始吗[y/n]" yn
+        if [ "$yn" = "y" ]; then
+            ffmpeg -re -stream_loop -1 -i $av  -filter_complex split[a][b],[b]setpts=PTS+$mdelay/TB[c],[c][a]overlay=0:0 -b 2000k -vcodec libx264 -acodec aac -q 21 -f flv $rtmp 
+        fi
     ;;
     "6")
         read -p "请输入推流地址[$rtmp] :" rtmp1
