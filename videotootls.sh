@@ -1,11 +1,13 @@
 #!/bin/bash
 echo "##############################################################################"
 echo "#                                                                            #"
-echo "#                     OnAir 直播流网络干扰测试工具                           #"
+echo "#                        Onair直播服务的流测试工具                           #"
 echo "#                                                                            #"
 echo "##############################################################################"
 
-eth="eth1"
+rtmp="rtmp://10.10.10.100/live/111111"
+av="./stream/sample.mp4"
+
 if [ "$EUID" = 0 ]; then
     echo "Error:This script must be run as root!" 1>&2
     exit 1
@@ -13,37 +15,39 @@ fi
 while :
 do
     echo ""
-    echo "1、启动"
-    echo "2、停止"
-    echo "3、退出"
-    read -p  "请你选择(1/2/3):" choice
+    echo "1、输出带当前时间戳的视频流"
+    echo "2、仅输出音频(无画面)"
+    echo "3、仅输出画面(无音频)"
+    echo "4、先有画面后有音频(音频延时3秒)"
+    echo "5、音频与画面同时延时(5秒)"
+    echo "6、设置推流地址"
+    echo "7、退出"
+    read -p  "请你选择(1/2/3/4/5/6/7):" choice
     case $choice in
     #判断变量cho的值
     "1")
-        read -p "请输入本机网络设备名称[eth1]:" ieth 
-        if [ "$ieth" != "" ]; then
-           eth=$ieth
-        fi
-        read -p "请设置丢包的比例[10%]" nrate
-        if [ "$nrate" = "" ]; then
-           nrate=10
-        fi
-        read -p "请输入包的延时[0ms]" delay
-        if [ "$delay" = "" ]; then
-           delay=0
-        fi
-        read -p "设备名称:$eth, 网络丢包率设置为:$((nrate+0))%, 包延时设置为:$delay, 设置是否正确?[y/n]" yn
-        if [ "$yn" = "y" ];then
-           echo "网络干扰已经启动......"
-           sudo tc qdisc add dev $eth root netem loss $nrate% delay ${delay}ms
-           #sudo tc qdisc add dev $eth root netem delay ${delay}ms
-        fi
+	ffmpeg -re -stream_loop -1 -i $av -vf "settb=AVTB,setpts='trunc(PTS/1K)*1K+st(1,trunc(RTCTIME/1K))-1K*trunc(ld(1)/1K)',drawtext=fontsize=60:fontcolor=white:x=2:y=(h-text_h)/2-100:text='%{localtime}.%{eif\:1M*t-1K*trunc(t*1K)\:d}'"   -f flv $rtmp
     ;;
     "2")
-        sudo tc qdisc del dev $eth root 
-        echo "网络干扰已经停止......"
-        ;;
+	ffmpeg -re -stream_loop -1 -i $av -vn -acodec copy   -f flv $rtmp
+    ;;
     "3")
+	ffmpeg -re -stream_loop -1 -i $av -vcodec copy -an   -f flv $rtmp
+    ;;
+    "4")
+	ffmpeg -re -stream_loop -1 -i $av -vcodec copy -acodec aac -filter_complex "adelay=3000|3000" -f flv $rtmp
+    ;;
+    "5")
+        ffmpeg -re -stream_loop -1 -i $av  -filter_complex split[a][b],[b]setpts=PTS+5/TB[c],[c][a]overlay=0:0 -b 2000k -q 23 -f flv $rtmp 
+    ;;
+    "6")
+        read -p "请输入推流地址[$rtmp] :" rtmp1
+        if [ "$rtmp1" != "" ]; then
+           rtmp=$rtmp1
+        fi
+        echo "设置的推流地址是[$rtmp]"
+        ;;
+    "7")
         exit
         ;;
     esac
