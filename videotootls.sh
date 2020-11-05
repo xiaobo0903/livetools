@@ -20,6 +20,9 @@ fi
 while :
 do
     echo ""
+    echo ""
+    echo "*当前的推流地址是:$rtmp,如需调整，请选择6"
+    echo ""
     echo "1、输出带当前时间戳的视频流"
     echo "2、仅输出音频(无画面)"
     echo "3、仅输出画面(无音频)"
@@ -60,6 +63,9 @@ do
         echo "设置的推流地址是[$rtmp]"
         ;;
     "7")
+        exit
+        ;;
+    "q")
         exit
         ;;
     esac
